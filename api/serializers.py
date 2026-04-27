@@ -1,8 +1,6 @@
 from rest_framework import serializers
 
 class ReadingSerializer(serializers.Serializer):
-    timestamp = serializers.DateTimeField()
-    value = serializers.FloatField()
     device_id = serializers.CharField()
     patient_id = serializers.CharField()
     reading = serializers.JSONField()
