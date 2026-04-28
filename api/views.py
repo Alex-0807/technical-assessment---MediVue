@@ -1,3 +1,5 @@
+from datetime import timedelta, timezone
+
 from rest_framework.views import APIView
 
 from rest_framework.response import Response
@@ -77,5 +79,39 @@ class DeletePatientView(APIView):
             patient = Patient.objects.get(patient_id=patient_id)
             patient.delete()
             return Response({"detail": "Patient deleted successfully"}, status=status.HTTP_200_OK)
+        except Patient.DoesNotExist:
+            return Response({"detail": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+class GetPatientSummaryView(APIView):
+    def get(self, request, patient_id):
+        try:
+            n = int(request.query_params.get("n", 12))
+            if not (1 <= n <= 200):
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Bad Request", "message": "n must be an integer between 1 and 200"},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+
+        try:
+            cutoff      = timezone.now() - timedelta(hours=24)
+            patient = Patient.objects.get(patient_id=patient_id)
+            readings = (
+                    Reading.objects
+                    .filter(patient_id=patient_id, reading__recorded_at__gte=cutoff)
+                    .order_by(F('reading__recorded_at').desc())
+                    [:n]
+                )
+            serializer = PatientSerializer(patient)
+            return Response({
+                "patient": serializer.data,
+                "readings": [{
+                    "device_id": reading.device_id,
+                    "reading": reading.reading,
+                    "evaluation": evaluate_glucose_reading(reading)
+                } for reading in readings]
+            }, status=status.HTTP_200_OK)
         except Patient.DoesNotExist:
             return Response({"detail": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
