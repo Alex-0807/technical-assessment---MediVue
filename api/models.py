@@ -24,3 +24,9 @@ class AlertDeviceIssue(models.Model):
     reading = models.JSONField()
     issue=models.CharField(max_length=50)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class PatientSummary(models.Model):
+    patient_id = models.CharField(max_length=255, unique=True)
+    time_in_range_pct = models.FloatField()
+    readings = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)

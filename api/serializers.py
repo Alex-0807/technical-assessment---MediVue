@@ -27,3 +27,8 @@ class AlertDeviceIssueSerializer(serializers.Serializer):
     device_id = serializers.CharField()
     reading = serializers.JSONField()
     issue = serializers.CharField()
+class PatientSummarySerializer(serializers.Serializer):
+    patient_id = serializers.CharField()
+    time_in_range_pct = serializers.FloatField()
+    readings = serializers.JSONField()  
+    created_at = serializers.DateTimeField()
