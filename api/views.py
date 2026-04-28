@@ -37,25 +37,27 @@ class ReadingView(APIView):
         except Exception as e:
             return Response({"detail": f"Error evaluating battery or signal quality: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        dedupKey = f"{serializer.validated_data['device_id']}_{serializer.validated_data['patient_id']}_{serializer.validated_data['reading'].get('recorded_at')}"
+        dedupKey = f"{serializer.validated_data['device_id']}_{serializer.validated_data['patient_id']}_{serializer.validated_data['reading'].get('recorded_at').replace(microsecond=0)}"
         if not ReadingDeDupKey.objects.filter(ReadingDeDupKey=dedupKey).exists():
         
             Reading.objects.create(**serializer.validated_data)
             ReadingDeDupKey.objects.create(ReadingDeDupKey=dedupKey)
-
+            
             # this try block will attempt to update the patient summary if the new reading is within 15 minutes of the last summary. If any error occurs during this process, it will be caught and logged, but it will not affect the successful creation of the reading or the response to the client.
             try:
                 patient_id = serializer.validated_data['patient_id']
                 patient_summary=PatientSummary.objects.filter(patient_id=patient_id).order_by('-created_at').first()
                 if patient_summary and patient_summary.created_at >= timezone.now() - timedelta(minutes=15):
-                    new_reading = serializer.validated_data['reading']
-                    updated_readings = [new_reading] + patient_summary.readings[:-1]
-                    patient=Patient.objects.get(patient_id=patient_id)
-                    in_range=sum(1 for r in updated_readings if patient.low_threshold_glucose_mgdl <= r.get("glucose_mgdl", 0) <= patient.high_threshold_glucose_mgdl)
-                    new_time_in_range_pct = (in_range / len(updated_readings)) * 100 if updated_readings else 0
-                    patient_summary.readings = updated_readings
-                    patient_summary.time_in_range_pct = new_time_in_range_pct
-                    patient_summary.save()
+                    recorded_at = serializer.validated_data['reading'].get('recorded_at')
+                    if recorded_at<=patient_summary.created_at:
+                        new_reading = serializer.validated_data['reading']
+                        updated_readings = [new_reading] + patient_summary.readings[:-1]
+                        patient=Patient.objects.get(patient_id=patient_id)
+                        in_range=sum(1 for r in updated_readings if patient.low_threshold_glucose_mgdl <= r.get("glucose_mgdl", 0) <= patient.high_threshold_glucose_mgdl)
+                        new_time_in_range_pct = (in_range / len(updated_readings)) * 100 if updated_readings else 0
+                        patient_summary.readings = updated_readings
+                        patient_summary.time_in_range_pct = new_time_in_range_pct
+                        patient_summary.save()
             except Exception as e:
                 print(f"Created successfully. But had error updating patient summary: {e}")
 

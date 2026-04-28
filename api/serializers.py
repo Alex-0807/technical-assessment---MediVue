@@ -22,11 +22,13 @@ class AlertGlucThresholdBreachSerializer(serializers.Serializer):
     device_id = serializers.CharField()
     reading = serializers.JSONField()
     evaluation = serializers.CharField()
+    status = serializers.CharField()
 
 class AlertDeviceIssueSerializer(serializers.Serializer):
     device_id = serializers.CharField()
     reading = serializers.JSONField()
     issue = serializers.CharField()
+    status = serializers.CharField()
 class PatientSummarySerializer(serializers.Serializer):
     patient_id = serializers.CharField()
     time_in_range_pct = serializers.FloatField()
